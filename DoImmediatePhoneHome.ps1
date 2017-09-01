@@ -32,6 +32,7 @@ $Splunk = "$($SplunkHome)\bin\splunk.exe"
 $Spec = "phoneHomeIntervalInSecs"
 if (!(Test-Path -Path $Splunk)) {
     write-host "File not found: $($Splunk). Exiting."
+    exit
 }
 $dcsettings = & $Splunk cmd btool deploymentclient list --debug
 if ($dcsettings -match $Spec) {
