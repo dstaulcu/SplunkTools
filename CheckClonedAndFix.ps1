@@ -1,4 +1,4 @@
-﻿
+
 $SplunkHome = 'C:\Program Files\SplunkUniversalForwarder'
 $mismatch = $false
 
@@ -24,6 +24,7 @@ foreach ($entry in $entries) {
     }
 }
 
+# if a mismatch was detected, stop splunk, clear-config, restart splunk
 if ($mismatch) {
     write-host "one or mismatches detected, personalizing splunk agent."
     Get-Service SplunkForwarder | Stop-Service 
