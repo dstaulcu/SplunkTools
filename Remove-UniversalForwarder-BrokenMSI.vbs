@@ -1,7 +1,7 @@
 option explicit
 
 Dim objShell :: Set objShell = CreateObject("WScript.Shell")
-
+Dim ServiceResults
 '### IF SERVICE IS RUNNING, STOP AND DELETE IT
 dim objWMIService, colListOfServices, objService
 Set objWMIService = GetObject("winmgmts:" _
@@ -9,19 +9,22 @@ Set objWMIService = GetObject("winmgmts:" _
 Set colListOfServices = objWMIService.ExecQuery _
     ("Select * from Win32_Service Where Name = 'SplunkForwarder'")
 For Each objService in colListOfServices
-    objService.StopService()
+	wscript.echo "Removing service: " & objService.Name
+    ServiceResults = objService.StopService()
     objService.Delete()
+	wscript.sleep(5000)
 Next
 	
 '### IF INSTALLATION DIRECTORY IS PRESENT, REMOVE IT
 Dim objFso :: Set objfso = CreateObject("Scripting.FileSystemObject")
 dim strSplunkHome :: strSplunkHome = "C:\Program Files\SplunkUniversalForwarder"
 if objFso.FolderExists(strSplunkHome) then
+	wscript.echo "Removing folder: " & strSplunkHome	
 	objFSO.DeleteFolder(strSplunkHome)
 end if
 
 '### IF DRIVERS ARE PRESENT, REMOVE THEM
-Dim objReg, strKeyPath, arrSubKeys, subkey, arrValueNames, arrValueTypes, key, displayName
+Dim objReg, strKeyPath, arrSubKeys, subkey, arrValueNames, arrValueTypes, key, displayName, description
 Const HKLM = &H80000002
 strKeyPath = "SYSTEM\CurrentControlSet\Services"
 Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\.\root\default:StdRegProv")
@@ -29,7 +32,8 @@ objReg.EnumKey HKLM, strKeyPath, arrSubKeys
 On Error Resume Next
 For Each key in arrSubKeys
 	objReg.GetStringValue HKLM,strKeyPath & "\" & key,"DisplayName", displayName
-	If InStr(LCase(displayName),lcase("Splunk")) > 0 Then
+	objReg.GetStringValue HKLM,strKeyPath & "\" & key,"Description", description
+	If ((InStr(LCase(key),lcase("Splunk")) > 0) or (InStr(LCase(displayName),lcase("Splunk")) > 0) or (InStr(LCase(description),lcase("Splunk")) > 0)) Then
 		if Is64 = True then
 			DeleteRegistryKey "64","HKLM" & "\" & strKeyPath & "\" & key
 		else 
@@ -49,16 +53,6 @@ Set objReg = Getx64RegistryProvider()
 keyPath = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
 key64Path = "SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
 
-' list out 32-bit applications on a 64-bit system
-If RegKeyExists(objReg, HKLM, key64Path) Then
-	objReg.EnumKey HKLM, key64Path, arrSubKeys
-	sResults = GetApplications(HKLM,key64path,arrSubKeys)
-	If len(sResults)>1 Then
-		bMatch = True	
-		DeleteRegistryKey "32","HKLM" & "\" & sResults
-		DeleteRegistryKey "64","HKLM" & "\" & sResults
-	end if
-End If
 
 ' list out 32-bit applications on a 32-bit system, or 64-bit applications
 ' on a 64-bit system.
@@ -66,9 +60,11 @@ If RegKeyExists(objReg, HKLM, keyPath) Then
 	objReg.EnumKey HKLM, keypath, arrSubKeys
 	sResults = GetApplications(HKLM,keypath,arrSubKeys)
 	If len(sResults)>1 Then
-		bMatch = True
-		DeleteRegistryKey "32","HKLM" & "\" & sResults
-		DeleteRegistryKey "64","HKLM" & "\" & sResults
+		if Is64 = True then
+			DeleteRegistryKey "64","HKLM" & "\" & sResults
+		else 
+			DeleteRegistryKey "32","HKLM" & "\" & sResults
+		end if
 	end if
 End If
 
@@ -95,9 +91,11 @@ On Error Goto 0
 
 Function GetApplications(HIVE, keypath,arrSubKeys)
 	On Error Resume Next
+	dim displayName, description
 	For Each key in arrSubKeys
 		objReg.GetStringValue HIVE,keyPath & "\" & key,"DisplayName", displayName
-		If InStr(LCase(displayName),strApplicationMatchString) > 0 Then
+		objReg.GetStringValue HIVE,keyPath & "\" & key,"Description", description		
+		If (InStr(LCase(displayName),strApplicationMatchString) > 0) or  (InStr(LCase(description),strApplicationMatchString) > 0) OR (InStr(LCase(key),strApplicationMatchString) > 0) Then
 			GetApplications = keypath & "\" & key
 		End If
 	Next
@@ -178,7 +176,7 @@ Function DeleteKey(ojReg, constHive, targetKey, targetArch, strHive)
 	If RegKeyExists(objReg, constHive, targetKey) Then
 		WScript.Echo "Unable to delete key: " & targetKey
 	Else
-		WScript.Echo "Key deleted (or didn't exist): " & targetKey
+		WScript.Echo "Key deleted: " & targetKey
 	End If
 End Function
 
