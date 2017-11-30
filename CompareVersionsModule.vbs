@@ -29,7 +29,7 @@ Function IsVersionCompliant(sExpectedVersion,sCurrentVersion)
 		sExpectedVersionPadded = sExpectedVersionPadded & sTemp
 	next 
 	
-	' prepare the expected version for arithmatic comparison by padding each element with zeros 
+	' prepare the detected version for arithmatic comparison by padding each element with zeros 
 	if isnull(sCurrentVersion) or sCurrentVersion = "" then 
 		sCurrentVersion = "0.0.0.0"
 	end if
@@ -38,12 +38,15 @@ Function IsVersionCompliant(sExpectedVersion,sCurrentVersion)
 	sCurrentVersionPadded = vbNullString
 	sTemp = vbNullString
 
-	' prepare the expected version for arithmatic comparison by padding each element with zeros
 	for i=0 to ubound(aCurrentVersion) 
 		sTemp = aCurrentVersion(i)
 		sTemp = string((4-len(sTemp)),"0") & sTemp
 		sCurrentVersionPadded = sCurrentVersionPadded & sTemp
 	next 
+	
+	sExpectedVersionPadded = abs(sExpectedVersionPadded)
+	sCurrentVersionPadded = abs(sCurrentVersionPadded)
+	
 
 	if bDebug = True then 
 		wscript.echo "sExpectedVersionPadded: " & sExpectedVersionPadded	
