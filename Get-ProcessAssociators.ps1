@@ -57,7 +57,7 @@ function get-search-results {
 # GET SERVER/CRED INFO FOR SPLUNK SEARCH
 $server = "splunk-dev.cloudapp.net"
 $port = "8089"
-if (!($cred)) { $cred = Get-Credential -Message "enter splunk cred" -UserName "davides-adm" }
+if (!($cred)) { $cred = Get-Credential -Message "enter splunk cred" -UserName "splunkuser" }
 
 
 # GET HOSTNAME INPUT FOR SPLUNK SEARCH
