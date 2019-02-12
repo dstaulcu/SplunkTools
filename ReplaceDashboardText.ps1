@@ -1,4 +1,22 @@
-﻿function get-splunk-search-results {
+<#
+.Synopsis
+   Find and replace strings of concern in splunk dashbaords, with human review.
+.DESCRIPTION
+   Lists dashbords and reports having specified pattern in search string
+   Prompts user to select dashboard to update
+   Shows user difference in preview and proposed new settings using Windiff
+   Prompts user to confirm proposed changes
+   Places accepted changes in clipboard
+   Opens selected dashboard in browser for editing, where clipboard content and be pasted and saved.
+
+.TO DO
+   - Add support for saved searches
+   - Add support for case where kos of same title exist in diferring apps
+   - Think of ways to reduce prompting
+   - Add logging of changes made
+#>
+
+function get-splunk-search-results {
 
     param ($cred, $server, $port, $search)
 
@@ -29,37 +47,65 @@ function GetMatches([string] $content, [string] $regex) {
     $returnMatches 
 }
 
-
-# Define path to windiff tool, allowing for human review of changes:
-$windiff_filepath = 'C:\Program Files (x86)\Support Tools\windiff.exe'
-$chrome_filepath = 'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
+# define splunk instance variables to use
+$server = "splunk-dev"
+$port = "8089"
 
 # Define the pattern to look for 
 $Pattern = '(?i)(sourcetype\s?=\s?"?(xml)?wineventlog:[^\s]+)'
 
-# grab instance specific search head/user info:
-$server = "splunk-dev"
-$port = "8089"
+# Define path to windiff tool, allowing for human review of changes:
+$windiff_filepath = 'C:\Program Files (x86)\Support Tools\windiff.exe'
+if (!(Test-Path -Path $windiff_filepath)) {
+    write-host "Unable to verify support file in path $($windiff_filepath)."
+    write-host 'Windiff is part of the the "Windows Server 2003 Resource Kit Tools" package which can be downloaded from https://www.microsoft.com/en-us/download/details.aspx?id=17657.'
+    write-host 'Exiting.'
+    exit
+}
+
+# Define path to preferred browser, which will later be used to open KOs for editing.
+$browser_filepath = 'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
+if (!(Test-Path -Path $browser_filepath)) {
+    write-host "Unable to verify support file in path $($browser_filepath)."
+    write-host 'Please update the browser_filepath variable in this script provide the path to your preferred browswer for administering splunk.'
+    write-host 'Exiting.'
+    exit
+}
+
+# collect credentials from user, securely, at runtime
 if (!($cred)) { $cred = Get-Credential -Message "enter splunk cred" -UserName "admin" }
 
+# define the splunk search which returns a noramlized set of fields for savedsearches and views matching pattern of concern
+$theSearch = '| rest /servicesNS/-/-/data/ui/views splunk_server=local 
+| rename eai:appName as appName, eai:acl.owner as owner, eai:acl.sharing as sharing, eai:data as data, eai:type as type 
+| fields type, appName, sharing, owner, title, updated, matching_values, data, id 
+| append 
+    [| rest/servicesNS/-/-/saved/searches splunk_server=local 
+    | eval type="search" 
+    | rename eai:acl.app as appName, eai:acl.owner as owner, qualifiedSearch as data 
+    | fields type, appName, sharing, owner, title, updated, matching_values, data, id
+        ] 
+| regex data="(?msi)sourcetype\s?=\s?\"?(xml)?wineventlog:[^\s]+" 
+| rex field=data "(?<matching_values>(?msi)sourcetype\s?=\s?\"?(xml)?wineventlog:[^\s]+)" 
+| sort 0 appName, type, title'
 
-# get saved dashboards into results object
-$results = get-splunk-search-results -server $server -port $port -cred $cred -search "| rest /servicesNS/-/-/data/ui/views splunk_server=local | rename eai:* as *, acl.* as * | fields appName, sharing, userName, owner, title, updated, data"
+# perform the search and return results as object 
+$results = get-splunk-search-results -server $server -port $port -cred $cred -search $theSearch
 if (!($results)) { 
     write-host "no results found, exiting."
     exit 
 }
 $results = ConvertFrom-Csv -InputObject $results
 
-# enumerate each result (instance of dashboard) looking for pattern of concern (sourcetype field has more than xmlWinEventLog or WinEventLog)
+# enumerate matching knowledge object (view or savedsearch) 
 $records = @()
-foreach ($view in $results) {
+foreach ($result in $results) {
 
-    $Matches = GetMatches -content $view.data -regex $Pattern
+    $Matches = GetMatches -content $result.data -regex $Pattern
 
     if ($Matches) {
 
-        $data_newtext = $view.data
+        $data_newtext = $result.data
         $unique_matches = $matches | Select-Object -Unique
         foreach ($match in $unique_matches) {
             $match_newtext = $match -replace "sourcetype","source"
@@ -68,16 +114,16 @@ foreach ($view in $results) {
 
 
         $record = @{
-            'appName' =  $view.appName
-            'sharing' = $view.sharing
-            'userName' = $view.userName
-            'owner' = $view.owner
-            'title' = $view.title
-            'updated' = $view.updated
+            'appName' =  $result.appName
+            'sharing' = $result.sharing
+            'userName' = $result.userName
+            'owner' = $result.owner
+            'title' = $result.title
+            'updated' = $result.updated
             'match_count' = $Matches.count
             'matches' = $Matches
 #            'url_edit' = $edit_url 
-            'data' = $view.data
+            'data' = $result.data
             'new_data' = $data_newtext
         }
 
@@ -109,7 +155,7 @@ if (!$Selected) {
         Start-Process -filepath $windiff_filepath -argumentlist @($origfile,$newfile) -Wait
 
         # ask user if human review was acceptable and if so, do change.
-        $Response = @("Yes - Lets edit the dashboard now","No - Lets defer the change for now") | Out-GridView -Title "Proceed with change to $($this_item_detail.title)?" -PassThru
+        $Response = @("Yes - Put new content in my clipboard and open dashboard for editing in browser.","No - Lets defer the change for now") | Out-GridView -Title "Proceed with change to $($this_item_detail.title)?" -PassThru
         if ($Response -match "^Yes") {     
 
             # build url which will enable open of dashboard in edit mode 
@@ -119,7 +165,7 @@ if (!$Selected) {
             $this_item_detail.new_data | clip
 
             # start new browser tab where admin can paste and save updated content
-            Start-Process -filepath $chrome_filepath -argumentlist @($edit_url) -Wait
+            Start-Process -filepath $browser_filepath -argumentlist @($edit_url) -Wait
         }
 
         
