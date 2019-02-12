@@ -60,7 +60,7 @@ $chrome_filepath = 'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
 $Pattern = '(?i)(sourcetype\s?=\s?"?(xml)?wineventlog:[^\s]+)'
 
 # grab instance specific search head/user info:
-$server = "splunk-dev.cloudapp.net"
+$server = "splunk-dev"
 $port = "8089"
 if (!($cred)) { $cred = Get-Credential -Message "enter splunk cred" -UserName "admin" }
 
