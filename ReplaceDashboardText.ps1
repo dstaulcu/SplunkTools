@@ -17,28 +17,6 @@
     return $SearchResults
 }
 
-function set-splunk-object-value {
-    param ($server, $port, $cred, $object_id, $valuename, $valuedata)
-
-    # This will allow for self-signed SSL certs to work
-    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12   #(ssl3,SystemDefault,Tls,Tls11,Tls12)
-
-    $search_id = ($search.id).replace(($search.id).Split("/")[2],"$($server):$($port)")
-    $url = "$($search_id)/acl" 
-    
-    $body = @{
-        $valuename = $valuedata
-          }
-
-    write-host "Posted $($url) with the follwing arguments."
-    $body
-    
-    Invoke-RestMethod -Method Post -Uri $url -Credential $cred -Body $body -TimeoutSec 300
-
-}
-
-
 function GetMatches([string] $content, [string] $regex) {
     $returnMatches = new-object System.Collections.ArrayList
     ## Match the regular expression against the content, and    
