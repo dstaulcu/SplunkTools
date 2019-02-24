@@ -167,6 +167,7 @@ End Function
 ' interval = -1
 ' source = splunkNameCheck
 ' sourcetype = script:cscript
+' index = _internal
 '''''''''''''''''''''''''''''''''''''''''''
 
 '''''''''''''''''''''''''''''''''''''''''''
