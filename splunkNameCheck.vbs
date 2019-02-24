@@ -178,7 +178,7 @@ End Function
 '''''''''''''''''''''''''''''''''''''''''''
 ' SPL
 '
-' index=* source=splunkNameCheck
+' index=_internal source=splunkNameCheck
 ' |  table _time host index sourcetype source _raw
 ' |  sort - _time
 '''''''''''''''''''''''''''''''''''''''''''
