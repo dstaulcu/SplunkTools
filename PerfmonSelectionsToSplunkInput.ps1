@@ -2,9 +2,10 @@ $SamplingInterval = 1000
 $Interval = 300
 $StatTypes = "average;count;dev;min;max"
 $Index = "main"
+$ComputerName = $env:computername
 
 
-$Objects = Get-Counter -ListSet "*" -ComputerName "splunk-dev"
+$Objects = Get-Counter -ListSet "*" -ComputerName $ComputerName
 $ObjectsView = $Objects
 
 
@@ -66,6 +67,5 @@ if ($records) {
     Start-Process -FilePath "Notepad.exe" -ArgumentList $tmpFile -Wait
     if (Test-Path -Path $tmpFile) { Remove-Item -Path $tmpFile }
 }
-
 
 
