@@ -6,11 +6,12 @@ if (Test-Path -Path $newfile) { Remove-Item $newfile -Force }
 
 $newcontent = @()
 foreach ($line in $content) {
-    if ($line -imatch "(DC=|CN=|\[|bindDNpassword = )") {
+#    if ($line -imatch "(DC=|CN=|\[|bindDNpassword = )") {
+    if ($line -imatch "(DC=|CN=|bindDNpassword = )") {
         $newline = $line
         $newline = $newline -replace "DC=[^,]+","DC=XXXXXX"
         $newline = $newline -replace "CN=[^,]+","CN=XXXXXX"
-        $newline = $newline -replace "\[\S+\]+","[XXXXXX]"
+#        $newline = $newline -replace "\[\S+\]+","[XXXXXX]"
         $newline = $newline -replace "bindDNpassword = .*","bindDNpassword = XXXXX"
 
         write-host "`noldline: $($line)"
@@ -24,4 +25,4 @@ foreach ($line in $content) {
 }
 
 $newcontent | Add-Content -Path $newfile
-write-host "Masked content written $($newfile)."
+write-host "`nMasked content written $($newfile)."
