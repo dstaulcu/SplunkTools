@@ -1,6 +1,6 @@
 ﻿
-$Account = "david_staulcup@hotmail.com"
-$Sender = "message@pdgm.org"
+$Account = ""
+$Sender = ""
 
 $ol = New-Object -comObject Outlook.Application 
 $ns = $ol.GetNameSpace("MAPI")
