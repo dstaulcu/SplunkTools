@@ -1,4 +1,4 @@
-﻿# https://docs.splunk.com/Documentation/Splunk/7.2.6/RESTTUT/RESTsearches
+# https://docs.splunk.com/Documentation/Splunk/7.2.6/RESTTUT/RESTsearches
  
  function create-searchjob {
  
@@ -109,6 +109,8 @@ $recordSet = @()
 foreach ($result_1 in $results_1) {
     # define the splunk search to execute
     $theSearch = "| inputlookup $($result_1.title)"
+
+    write-host (get-date) " - Invoking search [$($theSearch)]."
  
     # initiate the job
     $results_2 = create-searchjob -server $server -port $port -cred $cred -search $theSearch
@@ -144,10 +146,12 @@ foreach ($result_1 in $results_1) {
         if (Test-Path -Path $tmpfile) { Remove-Item -Path $tmpfile -Force }
         $results_2 | Export-Csv -NoTypeInformation -Path $tmpfile
         $tmpFileInfo = Get-Item -Path $tmpfile
+        $recordSetHash = (Get-FileHash -Path $tmpfile -Algorithm MD5).hash
         $recordSetSize = $tmpFileInfo.length
         if (Test-Path -Path $tmpfile) { Remove-Item -Path $tmpfile -Force }   
     } else {
         $recordSetSize = 0
+        $recordSetHash = 0
     }
 
     $info = @{
@@ -164,13 +168,14 @@ foreach ($result_1 in $results_1) {
         "marker" = $result_1.marker
         "recordCount" = $recordCount
         "recordSetSize" = $recordSetSize                                         
+        "recordSetHash" = $recordSetHash
     }
 
     $recordSet += New-Object -TypeName PSObject -Property $info
     
 }
 
-$recordSet | Select-Object -Property eai:acl.app, eai:acl.sharing, eai:acl.perms.read, title, type, AutoLookup, object, recordCount, recordSetSize, author, eai:acl.owner, id, marker | Sort-Object -Property RecordSetSize -Descending | Out-GridView -Title "Lookup Info"
+$recordSet | Select-Object -Property eai:acl.app, eai:acl.sharing, eai:acl.perms.read, title, type, AutoLookup, object, recordCount, recordSetSize, recordSetHash, author, eai:acl.owner, id, marker | Sort-Object -Property RecordSetSize -Descending | Out-GridView -Title "Lookup Info"
 
 
 
