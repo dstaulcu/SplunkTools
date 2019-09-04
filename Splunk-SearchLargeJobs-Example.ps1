@@ -1,4 +1,4 @@
-﻿<# To Do
+<# To Do
 # delete the job in splunk
 # abstract everything to a set of functions to simplify main
 # move print statements to verbose logging
@@ -85,7 +85,7 @@ $maxResultRowsLimit = 50000
 if (!($cred)) { $cred = Get-Credential -Message "enter splunk cred" -UserName "admin" }
  
 # define the splunk search to execute
-$theSearch = '| inputlookup majestic_million.csv'
+$theSearch = ' search index=_internal earliest=-1d@d | table _time index host source sourcetype _raw '
 
 # initiate the job
 write-host (get-date) "- Initiating search job with search text [$($theSearch)]."
@@ -197,4 +197,3 @@ if ($dispatchState -match "FAILED") {
     write-host (get-date) "- Operation complete.  Result file is $($tmpFilePath)\$($tmpFileName)"
 
 }
-
