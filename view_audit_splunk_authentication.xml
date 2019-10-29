@@ -1,0 +1,126 @@
+<form>
+  <label>Audit Splunk Authentication</label>
+  <search id="Base_Search_1">
+    <query>
+      index=_audit sourcetype=audittrail action="login attempt" | fields *
+    </query>
+    <earliest>$time_tok.earliest$</earliest>
+    <latest>$time_tok.latest$</latest>
+  </search>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label></label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>TOP USERS BY FAILED LOGIN ATTEMPTS</title>
+        <search base="Base_Search_1">
+          <query>| stats count(eval(info="succeeded")) as success_count, count(eval(info="failed")) as failed_count by user 
+| eval pct_failure=(failed_count/(success_count+failed_count))*100
+| sort - pct_failure
+| fields user, failed_count, success_count</query>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>TOP USERS BY SOURCE AND DESTINATION COUNTS</title>
+        <search base="Base_Search_1">
+          <query>search info=*
+|  table _time, host, sourcetype, user, action, info, reason, useragent, clientip, session
+|  stats dc(clientip) as num_src, dc(host) as num_dest by  user
+|  eval total=num_src+num_dest
+|  sort -_total
+|  rename num_src AS "Sources"
+|  rename num_dest AS "Destinations"
+|  fields user, Destinations, Sources
+|  head 10
+|  search user=*</query>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>SUCCESSFUL LOGONS</title>
+        <search base="Base_Search_1">
+          <query>search info="succeeded"
+| table _time, host, sourcetype, user, action, info, reason, useragent, clientip, session 
+| timechart span=1d count by info</query>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>FAILED LOGINS</title>
+        <search base="Base_Search_1">
+          <query>search info="failed"
+| table _time, host, sourcetype, user, action, info, reason, useragent, clientip, session 
+| timechart span=1d count by info</query>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>ANOMALOUS AUTHENTICATIONS</title>
+        <search base="Base_Search_1">
+          <query>search info="succeeded" clientip=* useragent=*
+| eval Hour=strftime(_time,"%H") 
+| anomalydetection host user clientip useragent Hour action=filter 
+| fields - count 
+| sort - Time 
+| convert ctime(Time) 
+| table _time, user host clientip useragent probable_cause 
+| rename probable_cause as "Outlier Field(s)"</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>RECENT AUTHENTICATION EVENTS</title>
+        <search base="Base_Search_1">
+          <query>search info=*
+|  table _time, host sourcetype, user, action, info, reason, useragent, clientip, session
+|  sort 0 _time</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
