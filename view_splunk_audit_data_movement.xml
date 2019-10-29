@@ -1,0 +1,67 @@
+<form>
+  <label>Audit Splunk Data Movement</label>
+  <search id="Base_Search_1">
+    <query>index=_audit sourcetype=audittrail action="*" info=granted action=* "REST" "JOBS" "RESULTS"
+|  regex _raw="info=granted\s+REST:\s+/search/jobs/\d+\.\d+/results/"
+|  rex field=_raw "/search/jobs/(?&lt;search_id&gt;\d+\.\d+)/results"
+|  eval movement_type=if(match(_raw,"export"),"ui_export","rest_client")
+|  fields *</query>
+    <earliest>$time_tok.earliest$</earliest>
+    <latest>$time_tok.latest$</latest>
+  </search>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label></label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>TOP DATA MOVERS</title>
+        <search base="Base_Search_1">
+          <query>stats count(eval(movement_type="ui_export")) as ui_export, count(eval(movement_type="rest_client")) as rest_client by user |  eval total_movement = ui_export + rest_client |  sort 10 total_movement |  fields user, ui_export, rest_client</query>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>DATA MOVEMENT TRENDS</title>
+        <search base="Base_Search_1">
+          <query>timechart dc(search_id) by movement_type</query>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>RECENT DATA MOVEMENT EVENTS</title>
+        <search base="Base_Search_1">
+          <query>table _time, host, sourcetype, user, action, info, movement_type, search_id |  sort 0 _time</query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
