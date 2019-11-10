@@ -1,0 +1,229 @@
+<form>
+  <label>Sysmon DNSQuery Event Analysis</label>
+  <search id="Base_Search_1">
+    <query>
+      host="$host_filter$" source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=22 "$process_filter$"
+| fields _time host Description RuleName, UtcTime, ProcessGuid, ProcessId, QueryName, QueryStatus, QueryResults, Image
+| eval process_exec = replace(Image,"(.*\\\)(?=.*(\.\w*)$$|(\w+)$$)","") 
+| eval process_exec=lower(process_exec)
+| search process_exec="$process_filter$"
+| rex field=QueryResults "type:\s+(?&lt;QueryType&gt;\d+)" 
+| eval QueryType = case(QueryType=="1","A",
+    QueryType=="2","NS",
+    QueryType=="5","CNAME",
+    QueryType=="6","SOA",
+    QueryType=="12","PTR",
+    QueryType=="15","MX",
+    QueryType=="16","TXT",
+    QueryType=="17","RP",
+    QueryType=="18","AFSDB",
+    QueryType=="24","SIG",
+    QueryType=="25","KEY",
+    QueryType=="28","AAAA",
+    QueryType=="29","LOC",
+    QueryType=="33","SRV",
+    QueryType=="35","NAPTR",
+    QueryType=="36","KX",
+    QueryType=="37","CERT",
+    QueryType=="39","DNAME",
+    QueryType=="42","APL",
+    QueryType=="43","DS",
+    QueryType=="44","SSHFP",
+    QueryType=="45","IPSECKEY",
+    QueryType=="46","RRSIG",
+    QueryType=="47","NSEC",
+    QueryType=="48","DNSKEY",
+    QueryType=="49","DHCID",
+    QueryType=="50","NSEC3",
+    QueryType=="51","NSEC3PARAM",
+    QueryType=="52","TLSA",
+    QueryType=="53","SMIMEA",
+    QueryType=="55","HIP",
+    QueryType=="59","CDS",
+    QueryType=="60","CDNSKEY",
+    QueryType=="61","OPENPGPKEY",
+    QueryType=="62","CSYNC",
+    QueryType=="249","TKEY",
+    QueryType=="250","TSIG",
+    QueryType=="256","URI",
+    QueryType=="257","CAA",
+    QueryType=="32768","TA",
+    QueryType=="32769","DLV"
+    ,1==1,"Unknown") 
+| eval QueryStatus=case(QueryStatus=="0","The operation completed successfully",
+    QueryStatus=="9001","DNS server unable to interpret format",
+    QueryStatus=="9002","DNS server failure",
+    QueryStatus=="9003","DNS name does not exist",
+    QueryStatus=="9004","DNS request not supported by name server",
+    QueryStatus=="9005","DNS operation refused",
+    QueryStatus=="9006","DNS name that ought not exist, does exist",
+    QueryStatus=="9007","DNS RR set that ought not exist, does exist",
+    QueryStatus=="9008","DNS RR set that ought to exist, does not exist",
+    QueryStatus=="9009","DNS server not authoritative for zone",
+    QueryStatus=="9010","DNS name in update or prereq is not in zone",
+    QueryStatus=="9016","DNS signature failed to verify",
+    QueryStatus=="9017","DNS bad key",
+    QueryStatus=="9018","DNS signature validity expired",
+    QueryStatus=="9504","DNS error, check rcode",
+    QueryStatus=="9506","DNS query request is pending",
+    QueryStatus=="9556","DNS name does not comply with RFC specifications",
+    QueryStatus=="9557","DNS name is a fully-qualified DNS name",
+    QueryStatus=="9558","DNS name is dotted (multi-label)",
+    QueryStatus=="9559","DNS name is a single-part name",
+    QueryStatus=="9560","DNS name contains an invalid character",
+    QueryStatus=="9561","DNS name is entirely numeric",
+    QueryStatus=="9601","DNS zone does not exist",
+    QueryStatus=="9602","DNS zone information not available",
+    QueryStatus=="9605","DNS zone has no start of authority (SOA) record",
+    QueryStatus=="9606","DNS zone has no Name Server (NS) record",
+    QueryStatus=="9607","DNS zone is locked",
+    QueryStatus=="9608","DNS zone creation failed",
+    QueryStatus=="9609","DNS zone already exists",
+    QueryStatus=="9610","DNS automatic zone already exists",
+    QueryStatus=="9613","DNS zone not secondary",
+    QueryStatus=="9701","DNS record does not exist",
+    QueryStatus=="9702","DNS record format error",
+    QueryStatus=="9705","DNS record timed out",
+    QueryStatus=="9711","DNS record already exists",
+    QueryStatus=="9714","DNS name does not exist",
+    QueryStatus=="9716","DNS domain was undeleted",
+    QueryStatus=="9718","DNS zone already exists in the directory service",
+    QueryStatus=="9719","DNS server not creating or reading the boot file for the directory service integrated DNS zone",
+    QueryStatus=="9751","DNS AXFR (zone transfer) complete",
+    QueryStatus=="9752","DNS zone transfer failed",
+    1==1,QueryStatus) 
+| fields *
+    </query>
+    <earliest>$time_tok.earliest$</earliest>
+    <latest>$time_tok.latest$</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Time Filter</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="host_filter">
+      <label>Host Filter</label>
+      <default>DESKTOP-0UH1C9P</default>
+    </input>
+    <input type="text" token="process_filter">
+      <label>Process Filter</label>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Count of DNS Queries by Process</title>
+        <search base="Base_Search_1">
+          <query>|  chart count by process_exec</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Count of DNS Queries by Status</title>
+        <search base="Base_Search_1">
+          <query>|  chart count by QueryStatus</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Count of DNS Queries by QueryType</title>
+        <search base="Base_Search_1">
+          <query>|  chart count by QueryType</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Count of DNS Queries by QueryResults</title>
+        <search base="Base_Search_1">
+          <query>|  chart count by QueryResults</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Count of DNS Queries Over Time by Process</title>
+        <search base="Base_Search_1">
+          <query>| timechart count by process_exec
+          </query>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Count of Network Conversation Partners Over Time by Process, IP Type, and Protocol</title>
+        <search>
+          <query>host="DESKTOP-0UH1C9P" source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=3 EventID=3 "\&lt;EventID\&gt;3\&lt;\/EventID\&gt;" "$process_filter$"
+| eval process_exec = replace(Image,"(.*\\\)(?=.*(\.\w*)$|(\w+)$)","") 
+| eval process_exec=lower(process_exec)
+| search process_exec="$process_filter$"
+| fields _time host Image, User, Protocol, Initiated, SourceIsIpv6, SourceIp, SourceHostname, SourcePort, SourcePortName, DestinationIsIpv6, DestinationIp, DestinationHostname, DestinationPort, DestinationPortName, process_exec
+| eval conversationPartnerIp = case(Initiated=="false",SourceIp,Initiated=="true",DestinationIp,1==1,"unknown")
+| eval conversationPartnerProtocol = Protocol
+| eval conversationPartnerIpType = case(Initiated=="false",SourceIsIpv6,Initiated=="true",DestinationIsIpv6,1==1,"unknown")
+| eval conversationPartnerIpType = if(conversationPartnerIpType=="true","ipv6","ipv4")
+| eval conversationPartnerPort = case(Initiated=="false",SourcePort,Initiated=="true",DestinationPort,1==1,"unknown")
+| eval conversationPartnerInfo = process_exec . ":" . conversationPartnerIpType . ":" . conversationPartnerProtocol
+| timechart dc(conversationPartnerIp) as conversationPartners by conversationPartnerInfo</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Record Details</title>
+        <search base="Base_Search_1">
+          <query>| table _time host QueryName, QueryStatus, QueryResults, Image, process_exec, QueryType 
+          | sort 0 _time
+          </query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
