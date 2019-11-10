@@ -1,4 +1,4 @@
-﻿$ProviderName = "Microsoft-Windows-Bits-Client"
+﻿$ProviderName = "Microsoft-Windows-Sysmon"
 $ProviderType = "Operational"
 
 $Events = (Get-WinEvent -ListProvider $ProviderName).Events | ?{$_.LogLink.LogName -match $ProviderType}
