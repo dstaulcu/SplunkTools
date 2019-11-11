@@ -1,47 +1,41 @@
-﻿# Image exclusions loaded from cfg file
-$NetworkConnect_PTRLookup_ImageExclusions = @("C:\Program Files\Tanium\TaniumClient.exe","mcansvc2.exe")
+# Image exclusions loaded from cfg file
+$NetworkConnect_PTRLookup_ImageExclusions = @("^C:\\Program Files\\LGHUB\\lghub_agent.exe$","\\nvcontainer.exe$")
 
-Write-Host "`nUser supplied the following exclusions:" ; $NetworkConnect_PTRLookup_ImageExclusions ; "`b"
-
-# Make events 
-$Events = @()
-$Events += New-Object -TypeName PSObject -Property @{Image = "C:\Program Files\Tanium\TaniumClient.exe"; User = ""; Protocol = "" ;Initiated = "false"; SourceIsIpv6 = ""; SourceIp = ""; SourceHostname = ""; SourcePort = ""; SourcePortName = ""; DestinationIsIpv6 = ""; DestinationIp = ""; DestinationHostname = ""; DestinationPort = ""; DestinationPortName = ""}
-$Events += New-Object -TypeName PSObject -Property @{Image = "C:\Program Files\McAfee\mcansvc.exe"; User = ""; Protocol = "" ;Initiated = "false"; SourceIsIpv6 = ""; SourceIp = ""; SourceHostname = ""; SourcePort = ""; SourcePortName = ""; DestinationIsIpv6 = ""; DestinationIp = ""; DestinationHostname = ""; DestinationPort = ""; DestinationPortName = ""}
-
+# Get some events to work with 
+$Events = Get-WinEvent -FilterHashtable @{logname='Microsoft-Windows-Sysmon/Operational'; ID=3} -MaxEvents 500
 
 # Evaluate events against exclusions
 foreach ($Event in $Events) {
-   
+
+    # conver the event to xml
+    $EventXML = [xml]$Event.ToXml()
+
+    # Iterate through each one of the XML message properties and append them as propery of Event           
+    For ($i=0; $i -lt $eventXML.Event.EventData.Data.Count; $i++) {            
+        # Append these as object properties            
+        Add-Member -InputObject $Event -MemberType NoteProperty -Force -Name  $eventXML.Event.EventData.Data[$i].name -Value $eventXML.Event.EventData.Data[$i].'#text'            
+    }            
+
     # initialize marker depicting whether match was found
     $blnMatchFound = $false
 
     # PTR requests likely not cached already if connection was not initiated locally
     if ($Event.Initiated -eq "false") {
 
-        write-host "`nEvaluating rule against event:"
-        $Event
-
-
         #Check to see if event image matches exclusion list
         foreach ($NetworkConnect_PTRLookup_ImageExclusion in $NetworkConnect_PTRLookup_ImageExclusions) {
 
-            # escape chars supplied in exclusion prep for regex evaluation
-            $NetworkConnect_PTRLookup_ImageExclusion_Escaped = [regex]::escape($NetworkConnect_PTRLookup_ImageExclusion)
-
-            write-host "`nUser exclusion [$($NetworkConnect_PTRLookup_ImageExclusion)] escaped as [$($NetworkConnect_PTRLookup_ImageExclusion_Escaped)] for regex matching."
-
-            if ($Event.Image -imatch $NetworkConnect_PTRLookup_ImageExclusion_Escaped) {   
+            # check twhether image in event matches this exclusion
+            if ($Event.Image -imatch $NetworkConnect_PTRLookup_ImageExclusion) {   
                 $blnMatchFound = $true
-                # no need to proceed further with match checking for this event
-                break               
+                $matchedExclusion = $NetworkConnect_PTRLookup_ImageExclusion
+                break   # no need to proceed further with match checking for this event
             }
         }
 
-        # in theory this would be just before call to dnslookup function
+        # Summarize event and disposition
         if ($blnMatchFound -eq $true) {
-            write-host "Disposition:  Skip DNS PTR Request for NetworkConnect event with Image: $($Event.Image)."
-        } else {
-            write-host "Disposition:  Proceed with DNS PTR Request for NetworkConnect event with Image: $($Event.Image)."
+            write-host "Do not proceed with DNS PTR Request for incoming NetworkConnect event `"$($Event.RecordID)`" having image `"$($Event.Image)`" based on exclusion `"$($matchedExclusion)`""
         }
     }
 }
