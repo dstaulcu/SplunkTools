@@ -75,4 +75,4 @@ if (Test-Path -Path $ResultsFile) { Remove-Item -Path $ResultsFile -Force }
 $Records | export-csv -NoTypeInformation -Path $ResultsFile
 
 # prepare records for display
-$Records | Sort-Object -Property TimeStamp, Computer, Object, Instance, Counter | Select-Object TimeStamp, Computer, Object, Instance, Counter, Value | Out-GridView
+# $Records | Sort-Object -Property TimeStamp, Computer, Object, Instance, Counter | Select-Object TimeStamp, Computer, Object, Instance, Counter, Value | Out-GridView
