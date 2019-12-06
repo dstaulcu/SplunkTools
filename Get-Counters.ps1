@@ -2,7 +2,7 @@
 .Synopsis
    Collects select performance counters until a specified process exists
 .EXAMPLE
-   Invoke via scheduled task when interactive user logs on and flush results session is fully loaded
+   Invoke via scheduled task when interactive user logs on and flush results when session is fully loaded for long logon bottleneck analysis
 .TODO
    Write output to Splunk as metrics via HEC
 #>
