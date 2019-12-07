@@ -1,33 +1,55 @@
-﻿<#
+<#
 .Synopsis
    Collects select performance counters until a specified process exists
 .EXAMPLE
-   Invoke via scheduled task when interactive user logs on and flush results when session is fully loaded for long logon bottleneck analysis
+   Invoke via scheduled task when interactive user logs on and flush results session is fully loaded
 .TODO
    Write output to Splunk as metrics via HEC
+   Add fail safe termination event in case
 #>
 
-$ProcessToWaitFor = "notepad"
+$ProcessToWaitFor = "^notepad$"
 
 $SampleIntervalSeconds = 1
+$FailsafeWaitDurationSeconds = 60*1
 
-$ResultsFile = "$($env:temp)\Records.csv"
-
+# http://www.appadmintools.com/documents/windows-performance-counters-explained/
 $Counters = @(
-    '\processor(_total)\% processor time',
-    '\process(*)\% processor time',
-    '\memory\% committed bytes in use',
-    '\memory\cache faults/sec',
-    '\physicaldisk(_total)\% disk time',
-    '\physicaldisk(_total)\current disk queue length'
-
+    '\Memory\Available Bytes',
+    '\Memory\Cache Bytes',
+    '\Memory\Page Reads/sec',
+    '\Memory\Page Writes/sec',
+    '\Memory\Pages/sec',
+    '\Memory\Pool Nonpaged Bytes',
+    '\Network Interface(*)\Bytes Received/sec',
+    '\Network Interface(*)\Bytes Sent/sec',
+    '\Paging File(_total)\% Usage',
+    '\PhysicalDisk(*)\Avg. Disk Queue Length',
+    '\PhysicalDisk(*)\Avg. Disk sec/Read',
+    '\PhysicalDisk(*)\Avg. Disk sec/Write',
+    '\PhysicalDisk(*)\Current Disk Queue Length',
+    '\PhysicalDisk(*)\Disk Read Bytes/sec',
+    '\PhysicalDisk(*)\Disk Write Bytes/sec',
+    '\PhysicalDisk(*)\Split IO/sec',
+    '\Process(*)\% Processor Time',
+    '\Process(*)\Handle Count',
+    '\Process(*)\IO Data Bytes/sec',
+    '\Process(*)\Working Set',
+    '\Process(_Total)\Working Set',
+    '\Processor(*)\% Privileged Time',
+    '\Processor(*)\% User Time',
+    '\Processor(_total)\% Processor Time',
+    '\System\Processor Queue Length'
 )
 
-$NumberOfLogicalProcessors = (Get-CimInstance -ClassName win32_processor -Property NumberOfLogicalProcessors)[0].NumberOfLogicalProcessors
+$ResultsFile = "$($env:temp)\Records.csv" ; if (Test-Path -Path $ResultsFile) { Remove-Item -Path $ResultsFile -Force }
 
-$Records = @()
+$NumberOfLogicalProcessors = (Get-CimInstance -ClassName win32_processor -Property NumberOfLogicalProcessors)[0].NumberOfLogicalProcessors
+$StartTime = get-date
 
 do {
+    $Records = @()
+
     try {
 
         $Samples = Get-Counter -Counter $Counters -MaxSamples 1 -ErrorAction SilentlyContinue
@@ -49,10 +71,11 @@ do {
             $Record = @{
                 "Computer" = $Computer
                 "TimeStamp" = $Sample.TimeStamp
+                "Path" = $Sample.Path
                 "Object" = $Object
                 "Instance" = $Instance
                 "Counter" = $Counter
-                "Value" = $Value
+                "Value" = [math]::round($Value,5)
             }
 
             $Records += New-Object -TypeName PSObject -Property $Record
@@ -61,18 +84,23 @@ do {
 
     } catch {}
 
+    # filter out un-needed 0 valued or _total instance process records
+    $records = $records | where { -not ($_.object -eq "process" -and ($_.instance -eq "_total" -or $_.value -eq 0)) }
+
+    # commit records to file
+    $Records | export-csv -NoTypeInformation -Path $ResultsFile -Append
+
     Start-Sleep -seconds $SampleIntervalSeconds
 
-    if ((Get-Process).name -match $ProcessToWaitFor) { $blnProcessRunning = $true } else { $blnProcessRunning = $false }
+    if (((Get-Process).name -match $ProcessToWaitFor) -or ((New-TimeSpan -Start $StartTime -End (Get-Date)).TotalSeconds -ge $FailsafeWaitDurationSeconds)) { $blnProcessRunning = $true } else { $blnProcessRunning = $false }
+
 
 } while ($blnProcessRunning -eq $false)
 
-# filter out un-needed records
-$records = $records | where { -not ($_.object -eq "process" -and $_.Counter -eq "pct_processor_time" -and ($_.instance -eq "_total" -or $_.value -eq 0)) }
+<# For interactive testing
 
-# commit records to file
-if (Test-Path -Path $ResultsFile) { Remove-Item -Path $ResultsFile -Force }
-$Records | export-csv -NoTypeInformation -Path $ResultsFile
+Import-Csv -Path $ResultsFile | Sort-Object -Property TimeStamp, Computer, Object, Instance, Counter | Select-Object TimeStamp, Computer, Object, Instance, Counter, Value | Out-GridView 
 
-# prepare records for display
-# $Records | Sort-Object -Property TimeStamp, Computer, Object, Instance, Counter | Select-Object TimeStamp, Computer, Object, Instance, Counter, Value | Out-GridView
+& $ResultsFile
+
+#>
