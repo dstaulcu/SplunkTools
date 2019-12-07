@@ -42,53 +42,56 @@ $Counters = @(
     '\System\Processor Queue Length'
 )
 
-$ResultsFile = "$($env:temp)\Records.csv" ; if (Test-Path -Path $ResultsFile) { Remove-Item -Path $ResultsFile -Force }
+$ResultsFile = "$($env:temp)\Records.csv" 
+if (Test-Path -Path $ResultsFile) { Remove-Item -Path $ResultsFile -Force }
 
 $NumberOfLogicalProcessors = (Get-CimInstance -ClassName win32_processor -Property NumberOfLogicalProcessors)[0].NumberOfLogicalProcessors
 $StartTime = get-date
 
 do {
-    $Records = @()
+    
 
     try {
+
+        $Records = @()
 
         $Samples = Get-Counter -Counter $Counters -MaxSamples 1 -ErrorAction SilentlyContinue
 
         foreach ($Sample in $Samples.CounterSamples) {
-            
+      
             $Path = $Sample.Path -split "\\"
             $Computer = $Path[2]
             $Object = ($Path[3] -split "\(")[0]
+
             $Counter = $Path[4]
             $Counter = $Counter -replace "%","pct"
             $Counter = $Counter -replace "/","_per_"
             $Counter = $Counter -replace "\s","_"
-            $Path[3] -match "\((\w+)\)" | Out-Null ; $Instance = $Matches[1]
-            $Value = $Sample.CookedValue
+            if ($Path[3] -match "\((\w+)\)") { $Instance = $Matches[1] } else { $Install = $null }
+            $Value =  [math]::round($Sample.CookedValue,5)
 
             if ($Object -eq "Process" -and $Counter -eq "pct_processor_time") { $value = $Value / $NumberOfLogicalProcessors }
 
             $Record = @{
                 "Computer" = $Computer
                 "TimeStamp" = $Sample.TimeStamp
-                "Path" = $Sample.Path
                 "Object" = $Object
                 "Instance" = $Instance
                 "Counter" = $Counter
-                "Value" = [math]::round($Value,5)
+                "Value" = $Value
             }
 
             $Records += New-Object -TypeName PSObject -Property $Record
 
         }  
 
-    } catch {}
+        # filter out un-needed 0 valued or _total instance process records
+        $records = $records | where { -not ($_.object -eq "process" -and ($_.instance -eq "_total" -or $_.value -eq 0)) }
 
-    # filter out un-needed 0 valued or _total instance process records
-    $records = $records | where { -not ($_.object -eq "process" -and ($_.instance -eq "_total" -or $_.value -eq 0)) }
+        # commit records to file
+        $Records | export-csv -NoTypeInformation -Path $ResultsFile -Append
 
-    # commit records to file
-    $Records | export-csv -NoTypeInformation -Path $ResultsFile -Append
+    } catch { write-host "there was an error" }
 
     Start-Sleep -seconds $SampleIntervalSeconds
 
