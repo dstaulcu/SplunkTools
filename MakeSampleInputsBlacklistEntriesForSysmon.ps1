@@ -23,6 +23,8 @@ foreach ($event in $sysmonSchemaXML.manifest.events.event) {
     }
 }
 
+$content
+
 <#
 
 # Sample blacklist entries for Sysmon schemaversion 4.21
