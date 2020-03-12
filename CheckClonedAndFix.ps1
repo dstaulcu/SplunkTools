@@ -1,33 +1,66 @@
+# Notes
+# splunk must be stopped before clone-prep-clear-config
+# splunk must be started via .\bin\splunk start process in order for config updates to take effect
+# https://docs.splunk.com/Documentation/Splunk/8.0.2/Admin/Integrateauniversalforwarderontoasystemimage
 
-$SplunkHome = 'C:\Program Files\SplunkUniversalForwarder'
-$mismatch = $false
+# define variables for use throughout script
+$computer_name = $env:COMPUTERNAME
+$bln_needs_clone_prep = $false
+$bln_needs_restart = $false
+$splunk_home = "C:\Program Files\SplunkUniversalForwarder"
+$splunk_conf_inputs = "$($splunk_home)\etc\system\local\inputs.conf"
+$splunk_conf_server = "$($splunk_home)\etc\system\local\server.conf"
+$splunk_conf_inputs_spec = "host"
+$splunk_conf_server_spec = "serverName"
 
-# check server.conf files
-$serverList = & $SplunkHome\bin\splunk.exe cmd btool server list
-$entries = $serverList -match "^serverName\s*="
-foreach ($entry in $entries) {
-    $entrydata = $entry.split("=")[1].Trim()
-    if (($entrydata -ne $env:COMPUTERNAME) -and ($entrydata -ne "`$COMPUTERNAME")) {
-        write-verbose "Value mismatch in a server.conf file. [$($entry) -ne $($env:computername)]"
-        $mismatch = $true
+# if splunk.exe is not present we have bigger problems
+$splunk_exe = "$($splunk_home)\bin\splunk.exe"
+if (!(Test-Path -path $splunk_exe)) {
+    write-host "Unable to find path to splunk.exe, quitting."
+    Exit-PSHostProcess
+}
+
+# check to see that current computer name matches serverName spec value in server.conf
+if (Test-Path -Path $splunk_conf_server) {
+    $specvalue = Get-Content -Path $splunk_conf_server | Select-String -Pattern "^$($splunk_conf_server_spec)\s*="
+    if ($specvalue) {    
+        $specvalue = ($specvalue -split "=")[1].trim()
+        if ($computer_name -ne $specvalue) {
+            $bln_needs_clone_prep = $true
+            write-host "spec [$($splunk_conf_server_spec)] has value [$($specvalue)] NOT matching host name [$($computer_name)]."        
+        }
+    } else {
+        # this condition is possible if measured before splunk.exe start command issued
+        $bln_needs_restart = $true        
     }
 }
 
-# check inputs.conf files
-$inputsList = & $SplunkHome\bin\splunk.exe cmd btool inputs list
-$entries = $inputsList -match "^host\s*="
-foreach ($entry in $entries) {
-    $entrydata = $entry.split("=")[1].Trim()
-    if (($entrydata -ne $env:COMPUTERNAME) -and ($entrydata -ne "`$decideOnStartup")) {
-        write-verbose "Value mismatch in an inputs.conf file. [$($entry) -ne $($env:computername)]"
-        $mismatch = $true
+# check to see that current computer name matches host spec value in server.conf
+if (Test-Path -Path $splunk_conf_inputs) {
+    $specvalue = Get-Content -Path $splunk_conf_inputs | Select-String -Pattern "^$($splunk_conf_inputs_spec)\s*="
+    if ($specvalue) {    
+        $specvalue = ($specvalue -split "=")[1].trim()
+        if ($computer_name -ne $specvalue) {
+            $bln_needs_clone_prep = $true
+            write-host "spec [$($splunk_conf_inputs_spec)] has value [$($specvalue)] NOT matching host name [$($computer_name)]."        
+        }
+    } else {
+        # this condition is possible if measured before splunk.exe start command issued
+        $bln_needs_restart = $true        
     }
 }
 
-# if a mismatch was detected, stop splunk, clear-config, restart splunk
-if ($mismatch) {
-    write-host "one or mismatches detected, personalizing splunk agent."
-    Get-Service SplunkForwarder | Stop-Service 
-    & "$($SplunkHome)\bin\splunk.exe" clone-prep-clear-config
-    Get-Service SplunkForwarder | Start-Service
+
+
+# do clone prep if any of the previous checks inidicate need to do so
+if ($bln_needs_clone_prep -eq $true) {
+    Invoke-Command -ScriptBlock { 
+        Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "stop" -Wait -WindowStyle Hidden ;
+        Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "clone-prep-clear-config" -Wait -WindowStyle Hidden ; 
+        Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "start" -Wait -WindowStyle Hidden
+      } 
+}
+# do restart if any of the previous checks inidicate need to do so
+if ($bln_needs_restart -eq $true) { 
+    Invoke-Command -ScriptBlock { Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "restart" -Wait -WindowStyle Hidden } 
 }
