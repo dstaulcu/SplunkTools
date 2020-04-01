@@ -34,7 +34,7 @@ if (Test-Path -Path $directory_localrepo) { Remove-Item -Path $directory_localre
 # work with each downloaded (and extracted) app present
 $expanded_apps = (Get-ChildItem -Path $directory_base -Filter $respository_name -Recurse -Directory).FullName
 
-foreach ($expanded_app in $expanded_apps) {$
+foreach ($expanded_app in $expanded_apps) {
 
     # make sure we are in the directory base at the start of each loop
     Set-Location -Path "$($directory_base)"
