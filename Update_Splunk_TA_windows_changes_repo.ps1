@@ -1,4 +1,14 @@
-﻿
+<#
+.Synopsis
+   Update https://github.com/dstaulcu/Splunk_TA_windows to include from most recent release on splunkbase
+.Instructions  
+   download all versions of Splunk_TA_windows from splunkbase into user profile downloads folder
+   pre-extract all tar, gz files using 7zip
+   delete and re-create repository
+   script steps through each download and rebuilds repository
+#>
+
+
 
 <# 
 PLACEHOLDER TO PLACE TOGGLE DEBUG/NORMAL MODE AS NEEDED
@@ -6,7 +16,7 @@ $DebugPreference = "Continue"
 $DebugPreference = "SilentlyContinue"
 #>
 
-$directory_base = "C:\Users\david\Downloads"
+$directory_base = "$($env:USERPROFILE)\Downloads"
 $repository_url = "https://github.com/dstaulcu/Splunk_TA_windows.git"
 $respository_name = ($repository_url -split "/")[-1] -replace ".git",""
 $directory_localrepo = "$($directory_base)\$($respository_name)"
@@ -24,7 +34,7 @@ if (Test-Path -Path $directory_localrepo) { Remove-Item -Path $directory_localre
 # work with each downloaded (and extracted) app present
 $expanded_apps = (Get-ChildItem -Path $directory_base -Filter $respository_name -Recurse -Directory).FullName
 
-foreach ($expanded_app in $expanded_apps) {
+foreach ($expanded_app in $expanded_apps) {$
 
     # make sure we are in the directory base at the start of each loop
     Set-Location -Path "$($directory_base)"
@@ -84,5 +94,7 @@ foreach ($expanded_app in $expanded_apps) {
     # wait
     write-host "press any key to continue once you have merged content on github"
     pause
+
+    $version_last = $version
 
 }
