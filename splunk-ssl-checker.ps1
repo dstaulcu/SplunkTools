@@ -1,6 +1,7 @@
-﻿<#
-Splunk Universal Forwarder SSL Certificate Checker
+<#
+Splunk Universal Forwarder SSL Certificate Checker for Windows
 A powershell-based version of https://splunkbase.splunk.com/app/3172/#/details
+Designed to run as a scripted input
 #>
 
 $splunkDir = 'C:\Program Files\SplunkUniversalForwarder'
