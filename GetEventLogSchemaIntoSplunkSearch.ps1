@@ -1,4 +1,4 @@
-﻿$ProviderName = "Microsoft-Windows-Sysmon"
+$ProviderName = "Microsoft-Windows-Windows Defender"
 $ProviderType = "Operational"
 
 $Events = (Get-WinEvent -ListProvider $ProviderName).Events | ?{$_.LogLink.LogName -match $ProviderType}
@@ -12,6 +12,8 @@ foreach ($Event in $Events ) {
         $dataElement -match "data name=`"([^`"]+)" | Out-Null
         $dataName = $Matches[1]
         $dataElementsClean += $dataName
+
+        $dataName = $dataName -replace " ","_"
 
         if ($printline -eq "" ) {
             $printline = $dataName
@@ -43,5 +45,4 @@ if ($Selected) {
     write-host "Selected Searches added to clipboard"
     $Selected.SPL | clip
 }
-
 
