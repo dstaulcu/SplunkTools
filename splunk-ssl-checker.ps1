@@ -12,7 +12,7 @@ if (!(Test-Path -Path $splunkDir)) {
 
 # define list of splunk conf file names known to control certificate behavior
 $include_files = @("*deploymentclient.conf","*inputs.conf","*outputs.conf","*server.conf","*web.conf")
-# define list of splunk specification names known to include certificate paths
+# define list of splunk specification (spec) names known to include certificate paths
 $specs = @("caCertFile","serverCert","caPath","sslRootCAPath","rootCA","sslKeysfile","clientCert","sslCertPath","caCertPath")
 
 # get list of files matching type and name of interest
@@ -28,11 +28,11 @@ foreach ($file in $files) {
             if ($line -match "^$($spec)") {
                 # isolate the value for the spec (path to certificate)
                 $SpecValue = (($line -split "=")[1]).trim()
-                # expand splunk home environment variable in path
+                # expand any references to splunkhome variable in path
                 $SpecValueEx = $SpecValue -replace '\$SPLUNK_HOME',$splunkDir
-                # check to path is a certificate we can access
+                # ensure expanded path is a file object we can process
                 if (Test-Path -Path $SpecValueEx -PathType Leaf) {
-                    # use .Net method to read certificate for typed-output instead of shelling to openssl
+                    # use .Net method to access typed properties of certificate instead of a string of openssl stdout
                     $cert = New-Object Security.Cryptography.X509Certificates.X509Certificate2 $SpecValueEx
                     # calculate number of days until certificate expires
                     $daysToExpire = (New-TimeSpan -end $($cert.NotAfter)).Days
@@ -49,7 +49,7 @@ foreach ($file in $files) {
                     $Message += ", Subject=`"$($cert.Subject)`""
                     $Message += ", Version=`"$($cert.Version)`""
                     $Message += ", confPath=`"$($file.FullName)`""                
-                    # print output for input of splunk script-based input handler to catch
+                    # print output optimized for splunk script-based input handler
                     write-output $Message
                 }
             }            
