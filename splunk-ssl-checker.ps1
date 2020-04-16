@@ -50,11 +50,10 @@ foreach ($file in $files) {
                     if ($daysToExpire  -le 60) { $daysToExpireStatus = "WARN" } else { $daysToExpireStatus = "OK" }
 
                     # prepare a string of key-value pairs for splunk to extract nicely
-	                $Output = New-Object System.Collections.ArrayList
+					$Output = New-Object System.Collections.ArrayList
 
-                    $Date = Get-Date -format 'yyyy-MM-ddTHH:mm:sszzz'
-	                [void]$Output.Add($Date)
-
+					$Date = Get-Date -format 'yyyy-MM-ddTHH:mm:sszzz'
+					[void]$Output.add($Date)
 	                [void]$Output.add("confName=`"$($file.name)`"")
 	                [void]$Output.add("specName=`"$($spec)`"")
 	                [void]$Output.add("cert=`"$($SpecValue)`"")
