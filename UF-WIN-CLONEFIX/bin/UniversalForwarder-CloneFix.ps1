@@ -14,7 +14,7 @@ Presently, on condition of need to rename, machine goes into reboot loop.  Corre
 $computer_name = $env:COMPUTERNAME
 $bln_needs_clone_prep = $false
 $bln_needs_restart = $false
-$splunk_home = "C:\Program Files\SplunkUniversalForwarder"
+$splunk_home = "C:\Program Files\Splunk"
 $splunk_conf_inputs = "$($splunk_home)\etc\system\local\inputs.conf"
 $splunk_conf_server = "$($splunk_home)\etc\system\local\server.conf"
 $splunk_conf_inputs_spec = "host"
@@ -34,6 +34,8 @@ if (Test-Path -Path $splunk_conf_server) {
         $specvalue = ($specvalue -split "=")[1].trim()
         if ($computer_name -ne $specvalue) {
             $bln_needs_clone_prep = $true
+            $server_conf = ((Get-Content -Path $splunk_conf_server) -replace $specvalue,$computer_name)| Set-Content -Path $splunk_conf_server
+
             write-host "spec [$($splunk_conf_server_spec)] has value [$($specvalue)] NOT matching host name [$($computer_name)]."        
         }
     } else {
@@ -49,6 +51,7 @@ if (Test-Path -Path $splunk_conf_inputs) {
         $specvalue = ($specvalue -split "=")[1].trim()
         if ($computer_name -ne $specvalue) {
             $bln_needs_clone_prep = $true
+            $inputs_conf = ((Get-Content -Path $splunk_conf_inputs) -replace $specvalue,$computer_name)| Set-Content -Path $splunk_conf_inputs
             write-host "spec [$($splunk_conf_inputs_spec)] has value [$($specvalue)] NOT matching host name [$($computer_name)]."        
         }
     } else {
@@ -61,13 +64,13 @@ if (Test-Path -Path $splunk_conf_inputs) {
 
 # do clone prep if any of the previous checks inidicate need to do so
 if ($bln_needs_clone_prep -eq $true) {
-    Invoke-Command -ScriptBlock { 
-        Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "stop" -Wait -WindowStyle Hidden ;
-        Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "clone-prep-clear-config" -Wait -WindowStyle Hidden ; 
-        Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "start" -Wait -WindowStyle Hidden
-      } 
+     Invoke-Command -ScriptBlock {Restart-Service splunkd -Force} 
 }
 # do restart if any of the previous checks inidicate need to do so
-if ($bln_needs_restart -eq $true) { 
-    Invoke-Command -ScriptBlock { Start-Process -FilePath "C:\Program Files\SplunkUniversalForwarder\bin\splunk.exe" -ArgumentList "restart" -Wait -WindowStyle Hidden } 
+
+if ($bln_needs_restart -eq $true) {
+    write-host "splunk restart needed... restarting now" 
+    Invoke-Command -ScriptBlock { Start-Process -FilePath "C:\Program Files\Splunk\bin\splunk.exe" -ArgumentList "restart" -Wait -WindowStyle Hidden } 
+    write-host "splunk restart completed"
 }
+
