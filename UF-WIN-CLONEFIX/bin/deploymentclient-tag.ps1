@@ -5,7 +5,23 @@ clientName = deploymentClient
 * A name the deployment server can filter on
 * Takes precedence over DNS names
 * Default: deploymentClient
+
+Note:  Requires Powershell v3.0 for ordered hash
 #>
+
+# define some constants
+$bln_needs_restart = $false
+$splunk_home = "C:\Program Files\SplunkUniversalForwarder"
+$splunk_conf_deploymentclient = "$($splunk_home)\etc\system\local\deploymentclient.conf"
+
+# if splunk.exe is not present we have bigger problems
+$splunk_exe = "$($splunk_home)\bin\splunk.exe"
+if (!(Test-Path -path $splunk_exe)) {
+    write-host "Unable to find path to splunk.exe, quitting."
+    Exit-PSHostProcess
+}
+
+
 
 #Get ComputerSystem class for access to Name, Manufacturer, Model, Domain, etc. properties
 $ComputerSystem = Get-CimInstance -ClassName "CIM_ComputerSystem"
@@ -118,19 +134,6 @@ $DiscoveryString = ($Discovery.GetEnumerator() | % { "$($_.Key)=$($_.Value)" }) 
 $DiscoveryString = $DiscoveryString -replace "=","@"
 
 # check whether any changes to clientName in deploymentclient.conf are needed
-# define variables for use throughout script
-$bln_needs_restart = $false
-$splunk_home = "C:\Program Files\SplunkUniversalForwarder"
-$splunk_conf_deploymentclient = "$($splunk_home)\etc\system\local\deploymentclient.conf"
-
-# if splunk.exe is not present we have bigger problems
-$splunk_exe = "$($splunk_home)\bin\splunk.exe"
-if (!(Test-Path -path $splunk_exe)) {
-    write-host "Unable to find path to splunk.exe, quitting."
-    Exit-PSHostProcess
-}
-
-# if deploymentclient file exists
 if (Test-Path -Path $splunk_conf_deploymentclient) {
 
     # get the content of the file
@@ -152,14 +155,6 @@ if (Test-Path -Path $splunk_conf_deploymentclient) {
     }
 
 }
-
-if ($bln_needs_restart -eq $true) {
-    write-host "splunk restart needed... restarting now" 
-    Invoke-Command -ScriptBlock { Start-Process -FilePath $splunk_exe -ArgumentList "restart" -Wait -WindowStyle Hidden } 
-    write-host "splunk restart completed"
-}
-
-
 # do restart if any of the previous checks inidicate need to do so
 if ($bln_needs_restart -eq $true) { 
     Invoke-Command -ScriptBlock { Restart-Service SplunkForwarder -Force } 
