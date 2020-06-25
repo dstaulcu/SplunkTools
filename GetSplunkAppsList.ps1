@@ -29,6 +29,8 @@ $selected = $results | where-object {$_.archive_status -eq "live"} |
 
 $counter = 0
 
+$Failures = @()
+
 foreach ($item in $selected) {
     $counter++
     $response = Invoke-WebRequest -Uri $item.path
@@ -46,17 +48,28 @@ foreach ($item in $selected) {
     $element.innerHTML -match "sb-target=`"(\d+\.\d+\.\d+)`"" | Out-Null
     $release_version = $matches[1]
 
-    # extract out the sha256 and filename for release version
-    $element.innerHTML -imatch "SHA256 checksum \(([^)]+)\)\s+([a-z0-9]+)" | Out-Null
-    $filename = $Matches[1]
-    $sha256 = $Matches[2]
+    if ($release_version) {
 
-    # build the URL and do the download
-    $download_url = "$($item.path)release/$($release_version)/download/"
+        # extract out the sha256 and filename for release version
+        $element.innerHTML -imatch "SHA256 checksum \(([^)]+)\)\s+([a-z0-9]+)" | Out-Null
+        $filename = $Matches[1]
+        $sha256 = $Matches[2]
 
-    write-host "Downloading item $($counter) of $($selected.count) ($($item.title)) from $($download_url)`""
+        # build the URL and do the download
+        $download_url = "$($item.path)release/$($release_version)/download/"
 
-    start-process -FilePath $browser_path -ArgumentList $download_url
+        write-host "Downloading item $($counter) of $($selected.count) ($($item.title)) from $($download_url)`""
+
+      #  start-process -FilePath $browser_path -ArgumentList $download_url
+
+    } else {
+
+        write-host "NOT Downloading item $($counter) of $($selected.count) ($($item.title)) due to inability to extract release version."
+        $failures += $item
+    }
 
 }
 
+
+$Failures_file = New-TemporaryFile 
+$failures | Out-GridView
