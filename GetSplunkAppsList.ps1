@@ -60,7 +60,7 @@ foreach ($item in $selected) {
 
         write-host "Downloading item $($counter) of $($selected.count) ($($item.title)) from $($download_url)`""
 
-      #  start-process -FilePath $browser_path -ArgumentList $download_url
+        start-process -FilePath $browser_path -ArgumentList $download_url
 
     } else {
 
