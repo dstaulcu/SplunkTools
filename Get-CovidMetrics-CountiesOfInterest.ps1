@@ -1,5 +1,6 @@
-﻿# Cities of interest
+# Cities of interest
 $CountiesOfInterest = @("Richmond, Georgia, US","Fairfax, Virginia, US","Arlington, Virginia, US","Loudoun, Virginia, US","Pottawattamie, Iowa, US","Elbert, Georgia, US")
+$CountiesOfInterest = @(", Georgia, US",", Virginia, US",", Virginia, US",", Virginia, US",", Iowa, US",", Georgia, US",", Florida, US",", Texas, US")
 
 # Transfor counties of interest to a regular expression pattern to match
 $RegexPattern = $CountiesOfInterest -join "|"
@@ -9,7 +10,7 @@ $RegexPattern = "`($($RegexPattern)`)"
 $url = "https://github.com/CSSEGISandData/COVID-19/archive/master.zip"
 $download = "$($env:temp)\master.zip"
 write-host "downloading COVID-19 dataset from url $($url)."
-Start-BitsTransfer -Source $url -Destination $download -ErrorAction SilentlyContinue
+Start-BitsTransfer -Source $url -Destination $download
 
 # extract the content
 write-host "extracting COVID-19 dataset downloaded archive."
@@ -60,8 +61,8 @@ $outputFile = $tmpFile.FullName -replace "$($tmpFile.Extension)$",".csv"
 $AllRecords | export-csv -path $outputFile -NoTypeInformation -Force
 
 # dispaly all records in grid view
-$AllRecords = import-csv -path $outputfile | Select SampleDate, Combined_Key, Active, Confirmed, Recovered, Deaths, FIPS, SampleDateEpoch | Sort-Object SampleDateEpoch -Descending | Out-GridView -Title $outputFile
+$AllRecords = import-csv -path $outputfile 
 
-<# display all records in built-in CSV file reader (that's excel for mom!)
+# display all records in built-in CSV file reader (that's excel for mom!)
 & $outputfile
-#>
+
