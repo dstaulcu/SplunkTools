@@ -1,6 +1,6 @@
 # User Preferences
 $AreasOfInterest = @(", US$")   # all of selected contries 
-$AreasOfInterest = @("Richmond, Georgia, US","Fairfax, Virginia, US","Arlington, Virginia, US","Loudoun, Virginia, US","Pottawattamie, Iowa, US","Elbert, Georgia, US") # all of select counties
+$AreasOfInterest = @("Fairfax, Virginia, US","Arlington, Virginia, US","Loudoun, Virginia, US") # all of select counties
 $AreasOfInterest = @(", Georgia, US",", Virginia, US",", Maryland, US",", Iowa, US",", Florida, US",", Texas, US")  # all of selected states
 
 
@@ -8,11 +8,11 @@ $AreasOfInterest = @(", Georgia, US",", Virginia, US",", Maryland, US",", Iowa, 
 # main
 # ----------------------------------------------------------------------------------------------
 
-# Transfor counties of interest to a regular expression pattern to match
+# transform counties of interest to a regular expression pattern to match
 $RegexPattern = $AreasOfInterest -join "|"
 $RegexPattern = "`($($RegexPattern)`)"
 
-# download the latest covid datasets
+# download the latest covid datasets (if local copy older than 20 hours)
 $url = "https://github.com/CSSEGISandData/COVID-19/archive/master.zip"
 $download = "$($env:temp)\master.zip"
 write-host "-downloading new COVID-19 datasets from $($url)."
@@ -20,8 +20,8 @@ if (!(Test-Path -Path $download -NewerThan (Get-Date).AddHours(-20))) {
     $Response = Invoke-WebRequest -Uri $url -OutFile $download
 }
 
-# extract the compressed content
-write-host "-extracting COVID-19 dataset downloaded archive."
+# extract the compressed content (if local copy older than 20 hours)
+write-host "-extracting COVID-19 dataset archive."
 $extracted = "$($env:temp)\extracted"
 if (!(Test-Path -Path $extracted -NewerThan (Get-Date).AddHours(-20))) {
     Expand-Archive -LiteralPath $download -DestinationPath $extracted -Force
@@ -37,7 +37,7 @@ $counter = 0
 foreach ($file in $files) {
     $counter++
     $pctComplete = [math]::round(($counter / $files.Count)*100)
-    Write-Progress -Activity "Extracting report data" -Status "$($pctComplete)% complete" -PercentComplete $pctComplete
+    Write-Progress -Activity "Extracting report data from $($file.name)" -Status "$($pctComplete)% complete" -PercentComplete $pctComplete
     $SampleDate = $file.BaseName
     # convert report date string to date
     $SampleDateE = [DateTime]::ParseExact($SampleDate, 'MM-dd-yyyy', [CultureInfo]::InvariantCulture)
@@ -62,6 +62,7 @@ foreach ($file in $files) {
 # create a temporary file to work with
 $tmpFile = New-TemporaryFile
 $outputFile = $tmpFile.FullName -replace "$($tmpFile.Extension)$",".csv"
+Rename-Item -Path $tmpFile -NewName $outputFile
 
 # output records to CSV file
 $AllRecords | Select SampleDate, Combined_Key, Country_Region, Province_State, County, Confirmed, Deaths, Incidence_Rate, Recovered, Case-Fatality_Ratio, SampleDateEpoch | export-csv -path $outputFile -NoTypeInformation -Force
