@@ -1,7 +1,7 @@
 # User Preferences
 $AreasOfInterest = @(", US$")   # all of selected contries 
-$AreasOfInterest = @("Fairfax, Virginia, US","Arlington, Virginia, US","Loudoun, Virginia, US") # all of select counties
-$AreasOfInterest = @(", Georgia, US",", Virginia, US",", Maryland, US",", Iowa, US",", Florida, US",", Texas, US")  # all of selected states
+$AreasOfInterest = @(", Virginia, US",", Maryland, US")  # all of selected states
+$AreasOfInterest = @("Fairfax, Virginia, US","Montgomery, Maryland, US","Prince George's, Maryland, US","Baltimore, Maryland, US","Anne Arundel, Maryland, US","Prince William, Virginia, US","Loudoun, Virginia, US","Howard, Maryland, US","Frederick, Maryland, US","Arlington, Virginia, US")
 
 
 # ----------------------------------------------------------------------------------------------
