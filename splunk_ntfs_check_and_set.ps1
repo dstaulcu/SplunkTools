@@ -57,6 +57,7 @@ $Issues = Get-ChildItemUnauthorizedAccessError -Folder $SplunkHome -Recurse $tru
 
 if ($Issues) {
 
+    # List files or folders to which access was denied
     foreach ($Issue in $Issues) {
         write-host $Issue.ToString()
         
@@ -97,9 +98,8 @@ if ($Issues) {
     write-host "No persmission issues under $($SplunkHome)"
 }
 
-exit
-
-# Remove NT AUTHORITY\SYSTEM ACEs
+<#
+# Remove NT AUTHORITY\SYSTEM ACEs  (to get environment to broken state again)
 $SplunkHome = "C:\Program Files\SplunkUniversalForwarder"
 $object = "$($SplunkHome)\etc\apps"
 $acl = Get-Acl -Path $object
@@ -116,3 +116,4 @@ if ($acesToRemove) {
 }
 
 ((Get-Acl -Path $object).access).identityReference
+#>
