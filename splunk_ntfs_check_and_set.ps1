@@ -43,7 +43,7 @@ function Get-ChildItemUnauthorizedAccessError {
     }
 
     if ($ObjectType -eq "Directory") {
-        $Objects = Get-ChildItem -Path $Folder -Recurse:$Recurse -ErrorAction SilentlyContinue
+        $Objects = Get-ChildItem -Path $Folder -Recurse:$Recurse -Directory -ErrorAction SilentlyContinue
     }
 
     $Issues = $Error | ?{$_.FullyQualifiedErrorId -match "UnauthorizedAccessError"}
