@@ -1,4 +1,4 @@
-﻿Import-Module PoshRSJob
+Import-Module PoshRSJob
 
 <#
 Objective:
@@ -19,6 +19,7 @@ function get-durationMsUntilNextMinute {
     return $NextStartDateTotalMS
 }
 
+# function to transform datetime objet to a string splunk can easily consume
 function format-splunktime {
     param (
         [parameter(Mandatory=$false)][datetime]$inputDate=(Get-Date)
@@ -31,6 +32,7 @@ function format-splunktime {
     return $outputDateString
 }
 
+# function to transform psCustomObject members and properties to lines having Key-Value pairs which splunk can easily consume and extract
 function format-splunkLogFromObject {
     param (
         [parameter(Mandatory=$true)]$object
@@ -50,7 +52,7 @@ function format-splunkLogFromObject {
     return $Records
 }
 
-# get script to run into into scriptblock object
+# get script to run (as thread via runspace job) into scriptblock object
 if (Test-Path -Path $ScriptBlockSource) {
     $ScriptBlock = (Get-Command $ScriptBlockSource).ScriptBlock
 } else {
@@ -71,10 +73,10 @@ while ($true)
         $RSJob = Start-RSJob -Name $JobName -ArgumentList @($TargetHost) -ScriptBlock $ScriptBlock 
     }
 
-    # wait for all of the threads to complete
+    # monitor jobs for 30 seconds, showing progress along the way
     $InterimStatus = Wait-RSJob -Name $JobName -ShowProgress -Timeout 30
 
-    # process each of the job results
+    # process any jobs which have completed recently
     $Report = @()
     $RSJobs = Get-RSJob -Name $jobName 
     foreach ($RSJob in $RSJobs | ?{$_.State -eq "Completed"}) {
@@ -84,16 +86,16 @@ while ($true)
         $RsJob | Remove-RSJob  -Force  
     }
 
-    # display count of jobs by state
+    # gather stats for jobs
     $Completed = @($RSJobs | ?{$_.State -eq "Completed"})
     $InComplete = @($RSJobs | ?{$_.State -ne "Completed"})
 
-    # write job results to logfile
+    # write interesting job results to logfile
     $Summary = $Report | ?{$_.DurationMs -ge 4000}
     $Records = format-splunkLogFromObject -object $Summary
     $Records | set-Content -Path $OutputFile -Force
 
-    # display job status & result highlights
+    # display job management and result highlights in console
     write-host "$(format-splunktime) - $($completed.count) threads completed.  $($incomplete.count) incomplete. $($summary.count) results exceeded threshold."
 
     # wait until top of next minute
