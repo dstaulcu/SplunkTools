@@ -10,6 +10,12 @@ if (!(Test-Path -Path $sysmonPath)) {
 $sysmonSchemaPrint = & $sysmonPath -s 2> $null | Select-String -Pattern "<"
 $sysmonSchemaPrintXml = [xml]$sysmonSchemaPrint
 
+# Stop if version is less than 4.22
+if ($sysmonSchemaPrintXml.manifest.schemaversion -lt 4.22) {
+    write-host "Sysmon.exe binary does not support schema version 4.22 or higher. Exiting."
+    exit    
+}
+
 # spit out a new template file
 $events = $sysmonSchemaPrintXml.manifest.events.event | Where-Object {$_.name -notmatch "(SYSMON_ERROR|SYSMON_SERVICE_STATE_CHANGE|SYSMON_SERVICE_CONFIGURATION_CHANGE)"}
 
@@ -53,12 +59,10 @@ foreach ($event in $events) {
         $xmlConfig += "`t`t`t<$($event.rulename) onmatch=`"include`">"
         $xmlConfig += "`t`t`t`t<!-- <Rule groupRelation=`"and`" name=`"`"> -->"
 
-        if ($sysmonSchemaPrintXml.manifest.schemaversion -ge 4.22) {
-            $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[0].Name
-            $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
-            $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[1].Name
-            $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
-        }
+        $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[0].Name
+        $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
+        $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[-1].Name
+        $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
        
         $xmlConfig += "`t`t`t`t<!-- </Rule> -->"                                
         $xmlConfig += "`t`t`t</$($event.rulename)>"
