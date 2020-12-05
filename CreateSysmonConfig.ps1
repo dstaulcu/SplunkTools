@@ -1,4 +1,4 @@
-﻿$sysmonPath = "$($env:windir)\sysmon.exe"
+$sysmonPath = "$($env:windir)\sysmon.exe"
 if (!(Test-Path -Path $sysmonPath)) {
     write-host "Sysmon.exe not present in $($sysmonPath). Exiting."
     exit
@@ -15,12 +15,15 @@ $events = $sysmonSchemaPrintXml.manifest.events.event | Where-Object {$_.name -n
 
 $xmlConfig = @()
 $xmlConfig += "<!--"
-$xmlConfig += "  FILTERING: Filter conditions available for use are: is, is not, contains, excludes, begin with, end with, less than, more than, image"
+$xmlConfig += "  FILTERING: Filter conditions available for use are: $($sysmonSchemaPrintXml.manifest.configuration.filters.'#text')"
 $xmlConfig += "-->"
 $xmlConfig += ""
 $xmlConfig += "<Sysmon schemaversion=`"$($sysmonSchemaPrintXml.manifest.schemaversion)`">"
 $xmlConfig += ""
-$xmlConfig += "`t<DnsLookup>False</DnsLookup>"
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "HashAlgorithms") { $xmlConfig += "`t<HashAlgorithms>*<HashAlgorithms/>" }
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "DnsLookup") { $xmlConfig += "`t<DnsLookup/>" }
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "CheckRevocation") { $xmlConfig += "`t<CheckRevocation/>" }
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "ArchiveDirectory") { $xmlConfig += "`t<ArchiveDirectory/>" }
 $xmlConfig += ""
 $xmlConfig += "`t<EventFiltering>"
 
@@ -46,9 +49,16 @@ foreach ($event in $events) {
 
     if ($printConfig -eq $true) {
         $xmlConfig += ""
-#        $xmlConfig += "`t`t<RuleGroup name=`"$($event.rulename)_RG_001`" groupRelation=`"or`">"
         $xmlConfig += "`t`t<RuleGroup name=`"`" groupRelation=`"or`">"
         $xmlConfig += "`t`t`t<$($event.rulename) onmatch=`"include`">"
+        $xmlConfig += "`t`t`t`t<!-- <Rule groupRelation=`"and`" name=`"`"> -->"
+
+        $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[0].Name
+        $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
+        $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[1].Name
+        $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
+       
+        $xmlConfig += "`t`t`t`t<!-- </Rule> -->"                                
         $xmlConfig += "`t`t`t</$($event.rulename)>"
         $xmlConfig += "`t`t</RuleGroup>"
     }
