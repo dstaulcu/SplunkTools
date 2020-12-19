@@ -1,11 +1,4 @@
-﻿<#
-https://docs.splunk.com/Documentation/InfraApp/latest/Admin/ManualInstallWindowsUF
-#>
-
-<#
-$DebugPreference = "Continue"           # Debug Mode
-$DebugPreference = "SilentlyContinue"   # Normal Mode
-#>
+param([String] $confFilePath = "C:\Apps\inputs.conf.sample.txt")
 
 function Import-SplunkConfFile {
     [CmdletBinding()]
@@ -61,8 +54,6 @@ function Import-SplunkConfFile {
    return $stanzas
 }
 
-$confFilePath = "C:\Apps\inputs.conf.sample.txt"
-
 if (!(Test-Path -Path $confFilePath)) {
     write-host "File `"$($confFilePath)`" Not Found.  Exiting."
     Exit
@@ -88,12 +79,6 @@ foreach ($input in $Inputs ) {
     
     # get the sample for each matching path
     $Counter = Get-Counter -Counter $MatchingInstances -MaxSamples 1
-    Write-host "$($input.stanza) would send $($counter.CounterSamples.Count) datapoints to transform on each interval with instances undefined"
+    Write-host "$($input.stanza) would send ~$($counter.CounterSamples.Count) datapoints to transform from each host every $($input.interval) seconds"
     
 }
-
-
-
-
-
-
