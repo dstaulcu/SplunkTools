@@ -26,8 +26,9 @@ $xmlConfig += "-->"
 $xmlConfig += ""
 $xmlConfig += "<Sysmon schemaversion=`"$($sysmonSchemaPrintXml.manifest.schemaversion)`">"
 $xmlConfig += ""
-if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "HashAlgorithms") { $xmlConfig += "`t<HashAlgorithms>*<HashAlgorithms/>" }
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "HashAlgorithms") { $xmlConfig += "`t<HashAlgorithms>*</HashAlgorithms>" }
 if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "DnsLookup") { $xmlConfig += "`t<DnsLookup/>" }
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "CheckRevocation") { $xmlConfig += "`t<CheckRevocation/>" }
 if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "ArchiveDirectory") { $xmlConfig += "`t<ArchiveDirectory/>" }
 $xmlConfig += ""
 $xmlConfig += "`t<EventFiltering>"
