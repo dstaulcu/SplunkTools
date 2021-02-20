@@ -26,7 +26,7 @@ $ServerClass = [xml](Get-Content -Path $ServerclassXml)
 
 $Records = @()
 
-# iterate through items and build powershell object
+# iterate through items and add to records object
 if ($ServerClass.deployResponse) {   
     foreach ($class in $ServerClass.deployresponse.serverClass) {
         foreach ($app in $class.app) {
@@ -41,27 +41,26 @@ if ($ServerClass.deployResponse) {
     }
 }
 
-############################################################################
-# show apps which are local but not listed in serverclass
-############################################################################
 
 # get list of apps present
 $Apps = Get-ChildItem -Path $SplunkApps -Directory
-
 $AppRecords = @()
 
+# categorize apps as built-in, deployed, or local based on factors
 foreach ($app in $Apps) {
 
+    # assume app is local, "Local"
     $AppType = "Local"
 
+    # if app has name of known local apps change value to "built-in"
     if ($app.Name -match "^(.*Splunk-FileAndDirectoryEliminator.*|introspection_generator_addon|learned|search|SplunkUniversalForwarder|splunk_httpinput|splunk_internal_metrics)$") {
         $AppType = "Built-In"
     } 
 
+    # if app has name present in list apps in serverlcass change value to "deployed"
     if ($Records.app -match $app.name) {
         $AppType = "Deployed"
     }
-
 
     $Info = @{
         "Name" = $app.Name
@@ -72,7 +71,7 @@ foreach ($app in $Apps) {
  
 }
 
-# prepare records for output to tanium
+# write-output records in recordset in format optimized for tanmium input
 foreach ($AppRecord in $AppRecords | ?{$_.type -ne "Built-in"}) {
     $recordString = ($AppRecord | ConvertTo-Csv -NoTypeInformation)[1]
     $recordString = $recordString -replace ",","|"
