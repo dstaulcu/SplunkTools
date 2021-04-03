@@ -4,8 +4,6 @@ if (!(Test-Path -Path $sysmonPath)) {
     exit
 } 
 
-
-
 # Get sysmon schema into xml
 $sysmonSchemaPrint = & $sysmonPath -s 2> $null | Select-String -Pattern "<"
 $sysmonSchemaPrintXml = [xml]$sysmonSchemaPrint
@@ -16,22 +14,28 @@ if ($sysmonSchemaPrintXml.manifest.schemaversion -lt 4.22) {
     exit    
 }
 
-# spit out a new template file
-$events = $sysmonSchemaPrintXml.manifest.events.event | Where-Object {$_.name -notmatch "(SYSMON_ERROR|SYSMON_SERVICE_STATE_CHANGE|SYSMON_SERVICE_CONFIGURATION_CHANGE)"}
-
 $xmlConfig = @()
 $xmlConfig += "<!--"
 $xmlConfig += "  FILTERING: Filter conditions available for use are: $($sysmonSchemaPrintXml.manifest.configuration.filters.'#text')"
+$xmlConfig += ""
+$xmlConfig += "  COMPOUND RULE SAMPLE: "
+$xmlConfig += "`t<Rule groupRelation=`"and`" name=`"`">"
+$xmlConfig += "`t`t<SampleField1 condition=`"contains`">SampleValue</SampleField1>"
+$xmlConfig += "`t`t<SampleField2 condition=`"contains`">SampleValue</SampleField2>"
+$xmlConfig += "`t</Rule>"
 $xmlConfig += "-->"
 $xmlConfig += ""
 $xmlConfig += "<Sysmon schemaversion=`"$($sysmonSchemaPrintXml.manifest.schemaversion)`">"
 $xmlConfig += ""
 if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "HashAlgorithms") { $xmlConfig += "`t<HashAlgorithms>*</HashAlgorithms>" }
-if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "DnsLookup") { $xmlConfig += "`t<DnsLookup/>" }
-if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "CheckRevocation") { $xmlConfig += "`t<CheckRevocation/>" }
-if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "ArchiveDirectory") { $xmlConfig += "`t<ArchiveDirectory/>" }
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "DnsLookup") { $xmlConfig += "`t<DnsLookup>False</DnsLookup>" }
+if ($sysmonSchemaPrintXml.manifest.configuration.options.option.name -match "CheckRevocation") { $xmlConfig += "`t<CheckRevocation>False</CheckRevocation>" }
 $xmlConfig += ""
 $xmlConfig += "`t<EventFiltering>"
+
+
+# process events whose behavior can be influenced through rules
+$events = $sysmonSchemaPrintXml.manifest.events.event | Where-Object {($_.rulename)}
 
 foreach ($event in $events) {
     $printConfig = $true
@@ -57,14 +61,6 @@ foreach ($event in $events) {
         $xmlConfig += ""
         $xmlConfig += "`t`t<RuleGroup name=`"`" groupRelation=`"or`">"
         $xmlConfig += "`t`t`t<$($event.rulename) onmatch=`"include`">"
-        $xmlConfig += "`t`t`t`t<!-- <Rule groupRelation=`"and`" name=`"`"> -->"
-
-        $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[0].Name
-        $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
-        $SampleObject = ($event.data | ?{$_.Name -notmatch "(RuleName|UtcTime|ProcessGuid|ProcessId|Archived)"})[-1].Name
-        $xmlConfig += "`t`t`t`t`t<!-- <$($SampleObject) condition=`"contains`">SomeValue</$($SampleObject)> -->"
-       
-        $xmlConfig += "`t`t`t`t<!-- </Rule> -->"                                
         $xmlConfig += "`t`t`t</$($event.rulename)>"
         $xmlConfig += "`t`t</RuleGroup>"
     }
