@@ -7,6 +7,7 @@ $SplunkExe = "$($SplunkHome)\bin\splunk.exe"
 $LogFile = "$($SplunkHome)\var\log\splunk\uf-clone-fix.log"
 $InputsLocal = "$($SplunkHome)\etc\system\local\inputs.conf"
 $ServerLocal = "$($SplunkHome)\etc\system\local\server.conf"
+$HostName = [system.net.dns]::getHostName()
 $bRestartNeeded = $false
 $bClonePrepNeeded = $false
 
@@ -34,7 +35,7 @@ function write-logfile {
     Write-Host $message
 
     # write message to file
-    Add-Content -Path $LogFilePath -Value $message
+    # Add-Content -Path $LogFilePath -Value $message
 }
 
 ##############################################################################
@@ -64,7 +65,7 @@ if (Test-Path -Path $InputsLocal) {
     $match = Get-Content -Path $InputsLocal | Select-String -Pattern "^host\s+=\s*(.*)"
     if ($match) {
         $specvalue = $match.Matches.Groups[1].Value
-        $pattern = "^$($env:COMPUTERNAME)$"
+        $pattern = "^$($HostName)$"
         if ($specvalue -notmatch $pattern) {
             write-logfile -LogFilePath $LogFile -Level INFO -message "Local inputs [host] value [$($specvalue)] does not match [$($pattern)]. Clone prep is needed."
             $bClonePrepNeeded = $true
@@ -78,7 +79,7 @@ if (Test-Path -Path $ServerLocal) {
     $match = Get-Content -Path $ServerLocal | Select-String -Pattern "^serverName\s+=\s*(.*)"
     if ($match) {
         $specvalue = $match.Matches.Groups[1].Value
-        $pattern = "^$($env:COMPUTERNAME)$"
+        $pattern = "^$($HostName)$"
         if ($specvalue -notmatch $pattern) {
             write-logfile -LogFilePath $LogFile -Level INFO -message "Local server [serverName] value [$($specvalue)] does not match [$($pattern)]. Clone prep is needed."
             $bClonePrepNeeded = $true
@@ -89,11 +90,11 @@ if (Test-Path -Path $ServerLocal) {
 
 if ($bClonePrepNeeded -eq $true) {
     write-logfile -LogFilePath $LogFile -Level INFO -message "invoking clone fix"
-	Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList "powershell.exe -file `"C:\Program Files\SplunkUniversalForwarder\etc\apps\UF-WIN-CLONEFIX-DEV\bin\UF-Clone-Fix.ps1`""	
+	$Result = Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList "powershell.exe -file `"C:\Program Files\SplunkUniversalForwarder\etc\apps\UF-WIN-CLONEFIX-DEV\bin\UF-Clone-Fix.ps1`""	
 } else {
     if ($bRestartNeeded -eq $true) {
         write-logfile -LogFilePath $LogFile -Level INFO -message "performing restart without clone prep"
-        Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList "powershell.exe Restart-Service -Name SplunkForwarder"
+        $Result = Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList "powershell.exe Restart-Service -Name SplunkForwarder"
     } else {
         write-logfile -LogFilePath $LogFile -Level INFO -message "no changes needed"
     }

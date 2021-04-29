@@ -2,8 +2,6 @@
 $LogFile = "$($SplunkHome)\var\log\splunk\uf-clone-fix.log"
 $SplunkExe = "$($SplunkHome)\bin\splunk.exe"
 
-$DebugPreference = "Continue"
-
 function write-logfile {
     param($LogFilePath
     ,[ValidateSet("ERROR","WARNING","INFO","DEBUG")]
@@ -24,7 +22,7 @@ function write-logfile {
     Write-Host $message
 
     # write message to file
-    Add-Content -Path $LogFilePath -Value $message
+    # Add-Content -Path $LogFilePath -Value $message
 }
 
 # make sure splunk home exists
