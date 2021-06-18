@@ -1,4 +1,0 @@
-﻿"name","srchIndexesAllowed","srchIndexesDefault"
-"azuresplunk-user-idx-main","main","main"
-"azuresplunk-user-idx-internal","_internal",""
-"azuresplunk-user-idx-desktop","main, test","main, test"
