@@ -75,7 +75,7 @@ function get-kvstorecollectionlist
 {
     param($splunk_rest_base_url, $sessionKey, $app_name)
 
-    write-host "$(get-date) - getting KVstore collection list within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - getting KVstore collection list within `"$($app_name)`" app."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/config"
 
@@ -101,7 +101,7 @@ function add-kvstorecollection
 {
     param($splunk_rest_base_url, $sessionKey, $app_name, $collection_name)
 
-    write-host "$(get-date) - creating KVstore collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - creating KVstore collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/config"
 
@@ -138,7 +138,7 @@ function set-kvstorecollectionschema
         }
     #>
 
-    write-host "$(get-date) - setting schema for KVstore collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - setting schema for KVstore collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/config/$($collection_name)"
 
@@ -164,7 +164,7 @@ function add-splunkkvtransform
 {
     param($splunk_rest_base_url, $sessionKey, $app_name, $collection_name, $schema_transform)
 
-    write-host "$(get-date) - adding transform for KVstore collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - adding transform for KVstore collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     <# Example schema_transform:
         @{
@@ -199,7 +199,7 @@ function add-kvstorecollectionrecord
 {
     param($splunk_rest_base_url, $sessionKey, $app_name, $collection_name, $record)
 
-    write-host "$(get-date) - adding single record to collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - adding single record to collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     <# Example record:
         @{
@@ -207,8 +207,6 @@ function add-kvstorecollectionrecord
             message = "Hello World!"
         }
     #>
-
-    write-host "$(get-date) - adding single record to KVstore collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/data/$($collection_name)"
 
@@ -235,7 +233,7 @@ function get-kvstorecollectionrecords
 {
     param($splunk_rest_base_url, $sessionKey, $app_name, $collection_name, $record)
 
-    write-host "$(get-date) - retrieving records from collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - retrieving records from collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/data/$($collection_name)"
 
@@ -260,7 +258,7 @@ function add-kvstorecollectionrecordarray
 {
     param($splunk_rest_base_url, $sessionKey, $app_name, $collection_name, $records)
 
-    write-host "$(get-date) - adding array of records in collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - adding array of records in collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/data/$($collection_name)/batch_save"
 
@@ -287,7 +285,7 @@ function remove-kvstorecollectionrecords
 {
     param($splunk_rest_base_url, $sessionKey, $app_name, $collection_name)
 
-    write-host "$(get-date) - removing records in collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - removing records in collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/data/$($collection_name)"
 
@@ -311,7 +309,7 @@ function remove-kvstorecollection
 {
     param($splunk_rest_base_url, $sessionKey, $app_name, $collection_name)
 
-    write-host "$(get-date) - removing collection named `"$($collection_name)`" within `"$($app_name)`" app of Splunk."
+    write-host "$(get-date) - removing collection named `"$($collection_name)`" within `"$($app_name)`" app."
 
     $uri = "$($splunk_rest_base_url)/servicesNS/nobody/$($app_name)/storage/collections/config/$($collection_name)"
 
