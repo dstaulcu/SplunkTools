@@ -22,58 +22,73 @@ git clone https://github.com/SigmaHQ/pySigma-pipeline-sysmon.git  & copy .\sigma
 
 if __name__ == '__main__':
 
-    sigma_rule_folder = 'C:/Users/david/PycharmProjects/SigmaToSplunk/sigma/rules/windows/'
-    sigma_rule_folder = 'C:/Users/david/PycharmProjects/SigmaToSplunk/sigma/rules/'
-
-
-    supported_rule_folders = ['auditd','windows']
-    supported_rule_folders = ['windows']
+    # CONFIGURATION SETTINGS
+    sigma_rule_folder = 'C:/Users/david/PycharmProjects/SigmaToSplunk/sigma/rules/windows'
+    supported_rule_status = ['stable']  # 'experimental','test','stable','expired'
     supported_rule_status = ['experimental','test','stable','expired']
-    supported_rule_status = ['stable']
-    prepend_splunk_search = "(index=* AND (sourcetype=XmlWinEventLog OR sourcetype=WinEventLog))"  # set to "" if nothing is wanted
+    prepend_splunk_search = "(index=* AND (sourcetype=XmlWinEventLog OR sourcetype=WinEventLog))"
 
-    # Determine files to parse
+    # Sigma setup (import backends and pipelines)
+    pipeline = sysmon_pipeline()
+    backend = SplunkBackend(pipeline)
+
+    # Identify all rule files to possibly process
     if Path(sigma_rule_folder).is_dir():  # True if folder
         sigma_files_gen = Path(sigma_rule_folder).glob('**/*.yml')
         files_on_disk = [x for x in sigma_files_gen if x.is_file()]
         print('Loaded {} yaml files from {}'.format(len(files_on_disk), sigma_rule_folder))
     else:
         raise FileNotFoundError(
-            f'No folder exists at {sigma_rule_folder}. Edit CONFIGURE ME section of this script and specify path to Sigma rules folder.')
+            print('No folder exists at {}'.format(sigma_rule_folder))
+        )
 
-    # Sigma setup
-    pipeline = sysmon_pipeline()
-    backend = SplunkBackend(pipeline)
+    # set counter to track applicable rules
+    matching_rule_count = 0
 
+    # Iterate through rule files
     for sigma_file in files_on_disk:
 
-        for folder in supported_rule_folders:
+        # open the rule file reading
+        with sigma_file.open(mode='r') as f:
 
-            if folder in str(sigma_file):
+            try:
+                sigma_obj = SigmaCollection.from_yaml(f)
+            except:
+                continue
 
-                with sigma_file.open() as f:
+            # handle possibility of more than one rule in object
+            for rule in sigma_obj.rules:
 
-                    try:
-                        sigma_obj = SigmaCollection.from_yaml(f)
-                    except:
-                        logging.error(f'Exception occured when converting sigma collection item from yaml {sigma_file}')
-                        continue
+                # only process rules with desired status
+                if str(rule.status) in supported_rule_status:
 
+                    matching_rule_count += 1
+
+                    # some rules do not convert reliably so try this first
                     try:
                         converted_query = backend.convert(sigma_obj)[0]  # should only be one
                     except sigma_exceptions.SigmaConditionError as e:
-                        logging.error(f'The following exception occured when processing {sigma_file}: {e}')
                         continue
                     except sigma_exceptions.SigmaFeatureNotSupportedByBackendError as e:
-                        logging.error(f'The following exception occured when processing {sigma_file}: {e}')
                         continue
 
-                    rule_status = str(sigma_obj.rules[0].status)
+                    print('\nsigma_file: {}'.format(sigma_file))
+                    print('rule_title: {}'.format(rule.title))
+                    print('rule_level: {}'.format(rule.level))
+                    print('rule_status: {}'.format(rule.status))
+                    print('rule_description: {}'.format(rule.description))
 
-                    if str(rule_status) in supported_rule_status:
-                        print('\nsigma_file: {}'.format(sigma_file))
-                        print('rule_status: {}'.format(rule_status))
+                    for tag in rule.tags:
+                        print('rule_tag: {}'.format(tag))
 
-                        converted_query = prepend_splunk_search + ' ' + converted_query
+                    for ref in rule.references:
+                        print('rule_ref: {}'.format(ref))
 
-                        print('converted_query: {}'.format(converted_query))
+                    for fp in rule.falsepositives:
+                        print('rule_fp: {}'.format(fp))
+
+
+                    converted_query = prepend_splunk_search + ' ' + converted_query
+                    print('rule_query: {}'.format(converted_query))
+
+    print('\nmatching rule count: {}'.format(matching_rule_count))
