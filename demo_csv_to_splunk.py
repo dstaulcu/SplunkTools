@@ -31,7 +31,7 @@ splunk_uri = 'https://splunk_host:8088/services/collector/event'
 splunk_hec_token = 'blah'
 headers = {'Authorization': 'Splunk '+ splunk_hec_token}
     
-# iterate throw events
+# iterate through rows to produce event and post in batches
 for item in data:
     
     hec_events_counter += 1
@@ -73,7 +73,7 @@ for item in data:
                 
         # reset the events list and re-add current item
         hec_events = []
-        hec_events.append(item)
+        hec_events.append(hec_event)
     
     # handle condition where we are processing the last record but max content not exceeded
     if hec_events_counter == len(data):
